@@ -15,7 +15,7 @@ export default function LoginPage() {
   const {login} = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const submitHandler = (e) => {
+  const submitHandler = async(e) => {
     e.preventDefault();
 
     if (currState === "Sign Up" && !isDataSubmitted) {
@@ -23,7 +23,7 @@ export default function LoginPage() {
       return
     }
 
-   login(currState === "Sign Up" ? "signup" : 'login',{fullname,email,password,bio})
+   await login(currState === "Sign Up" ? "signup" : 'login',{fullname,email,password,bio})
      
   navigate('/')
 
