@@ -43,6 +43,7 @@ export const AuthProvider = (props) => {
                 axios.defaults.headers.common["token"] = data.token;
                 setToken(data.token);
                 localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.existingUser));
                 toast.success(data.msg)
             } else {
                 toast.error(data.msg)
@@ -55,13 +56,29 @@ export const AuthProvider = (props) => {
     // logout function to handle user logout and socket disconnection//
 
     const logout = async () => {
+        // localStorage.removeItem("token");
+        // setToken(null)
+        // setAuthUser(null);
+        // setOnlineuser([]);
+        // delete axios.defaults.headers.common["token"]
+        // toast.success("Logged Out Successfully");
+        //  socket.disconnect();
+
         localStorage.removeItem("token");
-        setToken(null)
+        localStorage.removeItem("user");
+
+        setToken(null);
         setAuthUser(null);
         setOnlineuser([]);
-        delete axios.defaults.headers.common["token"]
+
+        delete axios.defaults.headers.common["token"];
+
+        if (socket) {
+            socket.disconnect();
+            setSocket(null);
+        }
+
         toast.success("Logged Out Successfully");
-         socket.disconnect();
 
     }
 
@@ -101,10 +118,26 @@ export const AuthProvider = (props) => {
     //---------------------------------------------------------------------------------------//
 
     useEffect(() => {
-        if (token) {
-            axios.defaults.headers.common["token"] = token;
+
+        // if (token) {
+        //     axios.defaults.headers.common["token"] = token;
+        //     checkAuth();
+        // }
+        const storedToken = localStorage.getItem("token");
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+
+        if (storedToken && storedUser) {
+            setToken(storedToken);
+            setAuthUser(storedUser);
+            axios.defaults.headers.common["token"] = storedToken;
+            connectSocket(storedUser);
+        }
+
+        if (storedToken) {
             checkAuth();
         }
+
+
     }, [])
 
     const contextValue = {
