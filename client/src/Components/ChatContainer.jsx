@@ -7,17 +7,17 @@ import toast from "react-hot-toast"
 
 export default function ChatContainer() {
 
-  const {message, selectedUser, setSelectedUser, sendMessage, getMessages} = useContext(ChatContext)
-  const {authUser, onlineUser} = useContext(AuthContext)
+  const { message, selectedUser, setSelectedUser, sendMessage, getMessages, setMessage } = useContext(ChatContext)
+  const { authUser, onlineUser, socket } = useContext(AuthContext)
   const [input, setInput] = useState("");
   const extraSpace = useRef();
- 
-  
+
+
   // handle sending a messages
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return null;
-    await  sendMessage({text: input.trim()});
+    await sendMessage({ text: input.trim() });
     setInput("")
   }
 
@@ -31,25 +31,45 @@ export default function ChatContainer() {
     }
     const reader = new FileReader();
     reader.onloadend = async (e) => {
-      await sendMessage({image: reader.result});
+      await sendMessage({ image: reader.result });
       e.target.value = ""; // for clearing selected image after sending the image on API//
     }
     reader.readAsDataURL(file)
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     if (selectedUser) {
       getMessages(selectedUser._id)
     }
-  },[selectedUser])
+  }, [selectedUser])
 
-   useEffect(() => {
+  useEffect(() => {
     if (extraSpace.current && message) {
       extraSpace.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [message])
 
-  
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (newMessage) => {
+      setMessage(prev => {
+        // 🛑 duplicate guard
+        if (prev.some(m => m._id === newMessage._id)) return prev;
+        return [...prev, newMessage];
+      });
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket]);
+
+
+
   return selectedUser ? (
     <div className='h-full overflow-scroll relative backdrop-blur-lg'>
 
@@ -58,7 +78,7 @@ export default function ChatContainer() {
       <div className='flex items-center gap-3 py-3 mx-4 border-b border-stone-500'>
         <img src={selectedUser.profilePic || assets.avatar_icon} alt="" className='w-8 rounded-full' />
         <p className='flex-1 text-lg text-white flex items-center gap-2'>{selectedUser.fullname}
-           {onlineUser.includes(selectedUser._id) && <span className='w-2 h-2 rounded-full bg-green-500'></span>}
+          {onlineUser.includes(selectedUser._id) && <span className='w-2 h-2 rounded-full bg-green-500'></span>}
         </p>
         <img src={assets.arrow_icon} alt="" className='max-w-5 md:hidden' onClick={() => setSelectedUser(null)} />
         <img src={assets.help_icon} alt="" className='max-md:hidden max-w-5' />
@@ -66,7 +86,7 @@ export default function ChatContainer() {
 
       {/*---- chat part ------ */}
 
-      
+
       <div className='flex flex-col h-[calc(100%-120px)] overflow-y-scroll p-3 pb-5 '>
         {message.map((msg, index) => (
           <div key={index} className={`flex items-end gap-2 justify-end ${msg.senderId !== authUser._id && 'flex-row-reverse'}`}>
@@ -99,7 +119,7 @@ export default function ChatContainer() {
 
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full' >
 
-          <input onChange={(e)=>setInput(e.target.value)} value={input}  onKeyDown={(e)=> e.key === "Enter" ? handleSendMessage(e) : null} type="text"  placeholder='send a message' className='flex-1 text-sm p-3 border-none outline-none rounded-lg text-white placeholder-gray-400' />
+          <input onChange={(e) => setInput(e.target.value)} value={input} onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null} type="text" placeholder='send a message' className='flex-1 text-sm p-3 border-none outline-none rounded-lg text-white placeholder-gray-400' />
 
           <input onChange={handleSendImage} type="file" name="" id="image" accept='image/png,image/jpeg' hidden />
 
